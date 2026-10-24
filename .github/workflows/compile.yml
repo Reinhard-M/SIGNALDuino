@@ -26,4 +26,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: compiled-firmware
-          path: .pio/build/**/firmware.*
+          path: .pio/build/Maple_sduino_serial/
