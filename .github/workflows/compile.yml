@@ -20,7 +20,7 @@ jobs:
           pip install --upgrade platformio
 
       - name: Projekt kompilieren
-        run: pio run
+        run: pio run -e Maple_sduino_serial
 
       - name: Fertige Firmware speichern
         uses: actions/upload-artifact@v4
