@@ -26,8 +26,7 @@ Bei jedem Push auf diesen Zweig baut GitHub Actions die Firmware und legt ein Re
 | `Maple_sduino_USB_…bin` | Maple-SIGNALduino am USB (z. B. USB-Sduino) |
 | `Maple_cul_USB_…bin` | Maple am USB mit CC1101 in CUL-Belegung (SPI an Pin 4/5/6, CS an Pin 7) |
 | `Maple_sduino_serial_…bin` | Maple-SIGNALduino an einer seriellen Bridge (z. B. LAN156) |
-| `Maple_sduino_LAN_…bin` | Maple-SIGNALduino mit W5500-LAN (z. B. LAN134) |
-| `Maple_cul_LAN_…bin` | Maple mit W5500-LAN und CC1101 in CUL-Belegung |
+| `Maple_sduino_LAN_…bin` | Maple-SIGNALduino mit W5500-LAN (z. B. LAN134); gebaut mit STM32-Core 2.9.0 aus GitHub, weil die Firmware mit Core 3.0.0 nicht läuft |
 
 Erkennt der Stick nach dem Flashen kein Funkmodul (`V` zeigt `R: a-`, die Meldung lautet `detect A: timeout, no cc1101`), passt die Belegung nicht. Dann die jeweils andere Variante (sduino ↔ cul) flashen.
 
