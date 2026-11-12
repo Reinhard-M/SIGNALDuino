@@ -1,8 +1,9 @@
 name: PlatformIO Build
 
 # Läuft bei jedem Push (auf jeden Zweig) und lässt sich unter "Actions" auch von Hand starten.
-# Ein Tag "v..." (z. B. v4.2.3-wMBusFix-1) erzeugt zusätzlich ein Release mit allen .bin-Dateien;
-# von dort lädt das Firmware-Update in Node-RED die Dateien ohne Anmeldung herunter.
+# Jeder Push auf den Hauptzweig dev-r423_cc1101 erzeugt zusätzlich ein Release
+# "v4.2.3-wMBusFix-<Laufnummer>" mit allen .bin-Dateien; von dort lädt das
+# Firmware-Update in Node-RED die Dateien ohne Anmeldung herunter.
 on:
   push:
     branches: ['**']
@@ -56,7 +57,7 @@ jobs:
           ls -l .pio/build/${{ matrix.env }}/*.bin | awk '{print "- " $9 " (" $5 " Byte)"}' >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.ref == 'refs/heads/dev-r423_cc1101' || startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -71,5 +72,9 @@ jobs:
       - name: Release anlegen
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v4.2.3-wMBusFix-{0}', github.run_number) }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('4.2.3-wMBusFix Build {0}', github.run_number) }}
+          target_commitish: ${{ github.sha }}
           files: fw/*.bin
           generate_release_notes: true
+          make_latest: true
