@@ -17,7 +17,8 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - Maple_sduino_USB      # USB-Sduino und Maple (USB am Raspberry Pi 5)
+          - Maple_sduino_USB      # USB-Sduino (USB am Raspberry Pi 5)
+          - Maple_cul_USB         # Maple LaCrosse (USB am Raspberry Pi 5, CC1101 in CUL-Belegung)
           - Maple_sduino_serial   # LAN156 (Maple hinter der Tasmota-Bridge, Debug-Port RX/TX)
           - Maple_sduino_LAN      # LAN134 (Maple mit W5500)
     name: ${{ matrix.env }}
