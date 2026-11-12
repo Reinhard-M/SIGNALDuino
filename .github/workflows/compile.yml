@@ -21,6 +21,7 @@ jobs:
           - Maple_cul_USB         # Maple LaCrosse (USB am Raspberry Pi 5, CC1101 in CUL-Belegung)
           - Maple_sduino_serial   # LAN156 (Maple hinter der Tasmota-Bridge, Debug-Port RX/TX)
           - Maple_sduino_LAN      # LAN134 (Maple mit W5500)
+          - Maple_cul_LAN         # Maple mit W5500, CC1101 in CUL-Belegung
     name: ${{ matrix.env }}
     steps:
       - name: Code auschecken
