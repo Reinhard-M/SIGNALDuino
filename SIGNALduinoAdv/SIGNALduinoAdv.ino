@@ -40,7 +40,7 @@
 #include <Arduino.h>
 
 #define PROGNAME               " SIGNALduinoAdv "
-#define PROGVERS               "4.2.3-dev250330"
+#define PROGVERS               "4.2.3-wMBusFix"
 #define VERSION_1               0x41
 #define VERSION_2               0x2d
 
@@ -311,6 +311,7 @@ void cmd_send();
 void cmd_uptime();
 void cmd_test();
 void cmd_maxfunc();
+void cmd_boot();
 void cmd_Version();
 void cmd_writeEEPROM();
 void cmd_writePatable();
@@ -359,10 +360,10 @@ void setHasCC1101(uint8_t val);
 //--------------------------------------------------------------------------------
 
 //typedef void (* GenericFP)(int); //function pointer prototype to a function which takes an 'int' an returns 'void'
-#define cmdAnz 24
-const char cmd0[] =  {'?', '?', 'b', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'e', 'e', 'P', 'r', 'R', 'S', 't', 'T', 'V', 'W', 'x', 'X', 'X','Z'};
-const char cmd1[] =  {'S', ' ', ' ', 'E', 'D', 'G', 'R', 'S', 'W', ' ', 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'E', 'Q',' '};
-const bool cmdCC[] = {  0,   0,   0,   0,   0,   0,  1,   0,   1,   1,   0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,  1 };
+#define cmdAnz 25
+const char cmd0[] =  {'?', '?', 'b', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'e', 'e', 'P', 'r', 'R', 'S', 't', 'T', 'V', 'W', 'x', 'X', 'X','Z','B'};
+const char cmd1[] =  {'S', ' ', ' ', 'E', 'D', 'G', 'R', 'S', 'W', ' ', 'C', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 'E', 'Q',' ',' '};
+const bool cmdCC[] = {  0,   0,   0,   0,   0,   0,  1,   0,   1,   1,   0,   1,   0,   0,   0,   0,   0,   0,   0,   0,   1,   0,   0,  1,  0 };
 void (*cmdFP[])(void) = {
 		cmd_help_S, // ?S
 		cmd_help,	// ?
@@ -387,7 +388,8 @@ void (*cmdFP[])(void) = {
 		cmd_writePatable,// x
 		changeReceiver,	// XE
 		changeReceiver,	// XQ
-		cmd_maxfunc     // Z
+		cmd_maxfunc,    // Z
+		cmd_boot        // BR / BS
 		};
 
 #define CSetAnz 14	// Anzahl der Konfig Variablen
@@ -2578,6 +2580,63 @@ void cmd_test()
 		}
 	}
 	MSG_PRINTLN("");
+}
+
+//--------------------------------------------------------------------------------
+// BR  Neustart (beim Maple Mini mit Bootloader 2.0 folgt danach kurz das DFU-Fenster)
+// BS  Sprung in den STM32-ROM-Bootloader (USART1 = Debug-Port RX/TX, 8E1, z.B. fuer stm32flash)
+//     Der laufende Watchdog laesst sich nicht abschalten; er wird vorher auf den laengsten
+//     Zeitraum gestellt (ca. 26 s bei LSI 40 kHz). Ohne Schreibvorgang startet er die Firmware danach neu.
+#ifdef MAPLE_Mini
+static void jumpToSystemBootloader()
+{
+	typedef void (*pFunction)(void);
+	const uint32_t addr = 0x1FFFF000;	// STM32F103 System Memory
+#ifdef MAPLE_WATCHDOG
+	IWDG->KR = 0xAAAA;		// nachladen
+	IWDG->KR = 0x5555;		// PR/RLR freigeben
+	IWDG->PR = 6;			// Teiler 256
+	IWDG->RLR = 0xFFF;		// laengste Zeit
+	while (IWDG->SR != 0) { }
+	IWDG->KR = 0xAAAA;
+#endif
+	noInterrupts();
+	SysTick->CTRL = 0;
+	SysTick->LOAD = 0;
+	SysTick->VAL = 0;
+	for (uint8_t i = 0; i < 8; i++) {
+		NVIC->ICER[i] = 0xFFFFFFFF;
+		NVIC->ICPR[i] = 0xFFFFFFFF;
+	}
+	HAL_RCC_DeInit();
+	SCB->VTOR = addr;
+	__set_MSP(*(volatile uint32_t *)addr);
+	pFunction bootloader = (pFunction)(*(volatile uint32_t *)(addr + 4));
+	interrupts();
+	bootloader();
+	while (1) { }
+}
+#endif
+
+void cmd_boot()
+{
+#ifdef MAPLE_Mini
+	if (cmdstring.charAt(1) == 'R') {
+		MSG_PRINTLN(F("reboot"));
+		delay(200);
+		NVIC_SystemReset();
+	}
+	else if (cmdstring.charAt(1) == 'S') {
+		MSG_PRINTLN(F("system bootloader"));
+		delay(200);
+		jumpToSystemBootloader();
+	}
+	else {
+		unsuppCmd = true;
+	}
+#else
+	unsuppCmd = true;
+#endif
 }
 
 //--------------------------------------------------------------------------------

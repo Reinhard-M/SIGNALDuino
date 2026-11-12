@@ -1,0 +1,75 @@
+name: PlatformIO Build
+
+# Läuft bei jedem Push (auf jeden Zweig) und lässt sich unter "Actions" auch von Hand starten.
+# Ein Tag "v..." (z. B. v4.2.3-wMBusFix-1) erzeugt zusätzlich ein Release mit allen .bin-Dateien;
+# von dort lädt das Firmware-Update in Node-RED die Dateien ohne Anmeldung herunter.
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        env:
+          - Maple_sduino_USB      # USB-Sduino und Maple (USB am Raspberry Pi 5)
+          - Maple_sduino_serial   # LAN156 (Maple hinter der Tasmota-Bridge, Debug-Port RX/TX)
+          - Maple_sduino_LAN      # LAN134 (Maple mit W5500)
+    name: ${{ matrix.env }}
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: PlatformIO-Pakete zwischenspeichern
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+
+      - name: PlatformIO installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Projekt kompilieren
+        run: pio run -e ${{ matrix.env }}
+
+      - name: Fertige Firmware speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.env }}
+          path: .pio/build/${{ matrix.env }}/*.bin
+          if-no-files-found: error
+
+      - name: Zusammenfassung
+        run: |
+          echo "### ${{ matrix.env }}" >> "$GITHUB_STEP_SUMMARY"
+          ls -l .pio/build/${{ matrix.env }}/*.bin | awk '{print "- " $9 " (" $5 " Byte)"}' >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Firmware holen
+        uses: actions/download-artifact@v4
+        with:
+          path: fw
+          merge-multiple: true
+
+      - name: Release anlegen
+        uses: softprops/action-gh-release@v2
+        with:
+          files: fw/*.bin
+          generate_release_notes: true
